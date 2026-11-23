@@ -437,14 +437,21 @@ export function getCssFilesForChunk(
  * Compiles index.html into an entry js module
  */
 export function buildHtmlPlugin(config: ResolvedConfig): Plugin {
-  const [preHooks, normalHooks, postHooks] = resolveHtmlTransforms(
-    config.plugins,
-  )
-  preHooks.unshift(injectCspNonceMetaTagHook(config))
-  preHooks.unshift(preImportMapHook(config))
-  preHooks.push(htmlEnvHook(config))
-  postHooks.push(injectNonceAttributeTagHook(config))
-  postHooks.push(postImportMapHook(config))
+  // Resolved on first use because `config.plugins` doesn't hold the shared
+  // plugin instances (`sharedDuringBuild`) until the config is resolved.
+  let htmlTransforms: ReturnType<typeof resolveHtmlTransforms> | undefined
+  const getHtmlTransforms = () => {
+    if (!htmlTransforms) {
+      htmlTransforms = resolveHtmlTransforms(config.plugins)
+      const [preHooks, , postHooks] = htmlTransforms
+      preHooks.unshift(injectCspNonceMetaTagHook(config))
+      preHooks.unshift(preImportMapHook(config))
+      preHooks.push(htmlEnvHook(config))
+      postHooks.push(injectNonceAttributeTagHook(config))
+      postHooks.push(postImportMapHook(config))
+    }
+    return htmlTransforms
+  }
   const processedHtml = perEnvironmentState(() => new Map<string, string>())
 
   const isExcludedUrl = (url: string) =>
@@ -519,6 +526,7 @@ export function buildHtmlPlugin(config: ResolvedConfig): Plugin {
         }
 
         // pre-transform
+        const [preHooks] = getHtmlTransforms()
         html = await applyHtmlTransforms(html, preHooks, this, {
           path: publicPath,
           filename: id,
@@ -1082,6 +1090,7 @@ export function buildHtmlPlugin(config: ResolvedConfig): Plugin {
         if (s) {
           result = s.toString()
         }
+        const [, normalHooks, postHooks] = getHtmlTransforms()
         result = await applyHtmlTransforms(
           result,
           [...normalHooks, ...postHooks],
