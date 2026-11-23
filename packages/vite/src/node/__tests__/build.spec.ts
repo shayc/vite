@@ -1589,7 +1589,7 @@ test.for([true, false])(
   },
 )
 
-test('transformIndexHtml runs on the shared plugin instance', async () => {
+test('transformIndexHtml runs on the shared plugin instances', async () => {
   const root = resolve(dirname, 'fixtures/shared-plugins/transform-index-html')
   let client: RolldownOutput | undefined
   const builder = await createBuilder({
@@ -1617,7 +1617,12 @@ test('transformIndexHtml runs on the shared plugin instance', async () => {
     (output): output is OutputAsset =>
       output.type === 'asset' && output.fileName === 'index.html',
   )!
-  expect(html.source).toContain('<meta name="config-resolved" content="true">')
+  expect(html.source).toContain(
+    '<meta name="config-resolved-pre" content="true">',
+  )
+  expect(html.source).toContain(
+    '<meta name="config-resolved-post" content="true">',
+  )
 })
 
 test('chunkImportMap per environment with shared plugins', async () => {
